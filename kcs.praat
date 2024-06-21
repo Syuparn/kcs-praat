@@ -1,15 +1,24 @@
 # consts
 kcsFrameSize = 11
 
-procedure default:
-    freqHi = 2400
-    freqLo = 1200
-    baud = 300
+procedure kcsConfig:
+    .freqHi = 2400
+    .freqLo = 1200
+    .baud = 300
 endproc
+@kcsConfig()
 
 # service locator
 locator$["genSound"] = "genKCSSound"
 locator$["concatSound"] = "concatKCSSound"
+
+procedure encodeKCSFromFile(.fileName$, .soundFileName$)
+    .data$ = readFile$(.fileName$)
+    @encodeKCS(.data$, kcsConfig.freqHi, kcsConfig.freqLo, kcsConfig.baud)
+    .soundObj = encodeKCS.return
+    selectObject(.soundObj)
+    do("Save as WAV file...", .soundFileName$)
+endproc
 
 procedure encodeKCS(.data$, .freqHi, .freqLo, .baud)
     .soundObjects# = zero#(length(.data$) * kcsFrameSize)

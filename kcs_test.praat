@@ -29,11 +29,17 @@ endproc
 procedure _testEncodeKCS(.data$, .freqHi, .freqLo, .baud, .expected#)
     # HACK: override service locator for test
     locator$["genSound"] = "mockgenKCSSound"
+    locator$["concatSound"] = "mockConcatSound"
     @encodeKCS(.data$, .freqHi, .freqLo, .baud)
-    .actual# = mockgenKCSSound.frames#
 
+    .actual# = mockgenKCSSound.frames#
     appendInfoLine("actual=[", .actual#, "], expected=[", .expected#, "]")
     assert .actual# == .expected#
+
+    # generated sound assertion
+    .objects# = mockConcatSound.soundObjects#
+    appendInfoLine("num of frames=", size(.objects#), ", expected=", size(.expected#))
+    assert size(.objects#) == size(.expected#)
 endproc
 
 procedure mockgenKCSSound(.freqHi, .freqLo, .baud, .bit, .bitIndex)
@@ -42,6 +48,14 @@ procedure mockgenKCSSound(.freqHi, .freqLo, .baud, .bit, .bitIndex)
         .frames# = zero#(0) ; NOTE: {} is syntax error
     endif
     .frames# = combine#(.frames#, .bit)
+
+    # dummy sound object
+    .return = .bitIndex
+endproc
+
+procedure mockConcatSound(.soundObjects#)
+    # dummy sound object
+    .return = 1
 endproc
 
 @testEncodeKCS()
