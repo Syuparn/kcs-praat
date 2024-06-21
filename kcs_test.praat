@@ -59,3 +59,59 @@ procedure mockConcatSound(.soundObjects#)
 endproc
 
 @testEncodeKCS()
+
+procedure testFramesToString()
+    appendInfoLine("testFramesToString")
+    @_testFramesToString({0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1}, "a")
+    @_testFramesToString({0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1}, "ab")
+    # trailing frame is insufficient
+    @_testFramesToString({0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1}, "a")
+endproc
+
+procedure _testFramesToString(.bits#, .expected$)
+    @framesToString(.bits#)
+    .actual$ = framesToString.return$
+    appendInfoLine("actual=", .actual$, ", expected=", .expected$)
+    assert .actual$ == .expected$
+endproc
+
+@testFramesToString()
+
+procedure testDetectFrameStart()
+    appendInfoLine("testDetectFrameStart")
+    @_testDetectFrameStart({0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1}, 1)
+    @_testDetectFrameStart({0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1}, 2)
+    @_testDetectFrameStart({1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1}, 2)
+    @_testDetectFrameStart({0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1}, 3)
+    @_testDetectFrameStart({1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1}, 12)
+    # longer than two frames
+    @_testDetectFrameStart({0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1}, 1)
+    @_testDetectFrameStart({0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1}, 1)
+    @_testDetectFrameStart({0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1}, 3)
+endproc
+
+procedure _testDetectFrameStart(.bits#, .expected)
+    @detectFrameStart(.bits#)
+    .actual = detectFrameStart.return
+    appendInfoLine("actual=", .actual, ", expected=", .expected)
+    assert .actual == .expected
+endproc
+
+@testDetectFrameStart()
+
+procedure testTrimFrames()
+    appendInfoLine("testTrimFrames")
+    @_testTrimFrames({0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1}, {0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1})
+    @_testTrimFrames({0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1}, {0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1})
+    @_testTrimFrames({1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1}, {0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1})
+    @_testTrimFrames({0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1}, {0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1})
+endproc
+
+procedure _testTrimFrames(.bits#, .expected#)
+    @trimFrames(.bits#)
+    .actual# = trimFrames.return#
+    appendInfoLine("actual=[", .actual#, "], expected=[", .expected#, "]")
+    assert .actual# == .expected#
+endproc
+
+@testTrimFrames()

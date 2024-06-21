@@ -8,6 +8,9 @@ procedure kcsConfig:
 endproc
 @kcsConfig()
 
+# HACK: used for early return
+endproc$ = "endproc"
+
 # service locator
 locator$["genSound"] = "genKCSSound"
 locator$["concatSound"] = "concatKCSSound"
@@ -43,8 +46,28 @@ procedure encodeKCS(.data$, .freqHi, .freqLo, .baud)
     .return = 'locator$["concatSound"]'.return
 endproc
 
+procedure decodeKCSFromFile(.soundFileName$, .txtFileName$)
+    .soundObj = do("Read from file...", .soundFileName$)
+    @decodeKCS(.soundObj, kcsConfig.freqHi, kcsConfig.freqLo, kcsConfig.baud)
+    # HACK: remove trailing "\n" because "Save as raw text file" appends new "\n" after text
+    .text$ = decodeKCS.return$ - newline$
+
+    # HACK: use dummy separator that never be used
+    #                                   title(dummy)      text    separator
+    do("Create Strings from tokens...", "encoded string", .text$, "\034")
+    do("Save as raw text file...", .txtFileName$)
+endproc
+
 procedure decodeKCS(.soundObj, .freqHi, .freqLo, .baud)
-    
+    @extractBits(.soundObj, .freqHi, .freqLo, .baud)
+    .bits# = extractBits.return#
+
+    # detect start of frames and trim noise before them
+    @trimFrames(.bits#)
+    .bits# = trimFrames.bits#
+
+    @framesToString(.bits#)
+    .return$ = framesToString.return$
 endproc
 
 procedure toKCSFrame(byte)
@@ -101,4 +124,112 @@ procedure concatKCSSound(.soundObjects#)
     endfor
 
     .return = .concatenated
+endproc
+
+procedure extractBits(.soundObj, .freqHi, .freqLo, .baud)
+    .duration = do("Get total duration")
+    .period = 1 / .baud
+    .nBits = ceiling(.duration / .period)
+    .bits# = zero#(.nBits)
+
+    selectObject(.soundObj)
+    # step, nFormants, ceilingHz(default), windowLength, pre-emphasis[Hz](default)
+    do("To Formant (burg)...", .period, 1, 5000, .period / 3, 50)
+
+    .threshold = (.freqHi + .freqLo) / 2
+
+    for .i from 1 to .nBits
+        # index(nth formant), time, unit(default), interpolation(default)
+        .t = (.i - 0.5) * .period
+        .formant = do("Get value at time...", 1, .t, "hertz", "linear")
+        if .formant > .threshold
+            .bit = 1
+        else
+            .bit = 0
+        endif
+        .bits#[.i] = .bit
+    endfor
+
+    .return# = .bits#
+endproc
+
+procedure trimFrames(.bits#)
+    @detectFrameStart(.bits#)
+    .iStart = detectFrameStart.return
+
+    if .iStart > size(.bits#)
+        exitScript("failed to detect start of frames (sound may be broken or wrong frequency/baud is used)")
+    endif
+
+    .trimmedLen = size(.bits#) - .iStart + 1
+    .trimmedBits# = zero#(.trimmedLen)
+    for .i from 1 to .trimmedLen
+        .trimmedBits#[.i] = .bits#[.i + .iStart - 1]
+    endfor
+
+    .return# = .trimmedBits#
+endproc
+
+procedure detectFrameStart(.bits#)
+    for .i from 1 to size(.bits#)
+        @canBeFrameStartBit(.bits#, .i)
+        .isStart = canBeFrameStartBit.return
+        if .isStart
+            if .i + kcsFrameSize * 2 > size(.bits#)
+                .return = .i
+                'endproc$'
+            endif
+
+            # see next two frames to check this is actually frame start
+            @canBeFrameStartBit(.bits#, .i + kcsFrameSize)
+            .isStart2 = canBeFrameStartBit.return
+            @canBeFrameStartBit(.bits#, .i + kcsFrameSize * 2)
+            .isStart3 = canBeFrameStartBit.return
+            if .isStart2 && .isStart3
+                .return = .i
+                'endproc$'
+            endif
+        endif
+    endfor
+
+    # not found
+    .return = size(.bits#) + 1
+endproc
+
+procedure canBeFrameStartBit(.bits#, .i)
+    .return = 0 ; false
+
+    # out of range
+    if .i + kcsFrameSize - 1 > size(.bits#)
+        'endproc$'
+    endif
+
+    # does not meet frame#[1] = 0, frame#[10] = 1, frame#[11] = 1
+    if .bits#[.i] != 0 || .bits#[.i+9] != 1 || .bits#[.i+10] != 1
+        'endproc$'
+    endif
+
+    .return = 1 ; true
+endproc
+
+procedure framesToString(.bits#)
+    .str$ = ""
+
+    for .i from 0 to floor(size(.bits#) / kcsFrameSize) - 1
+        byte = 0
+        mask = 1
+
+        # data format
+        # [1]: 0
+        # [2]~[9]: bits
+        # [10], [11]: 1
+        for .j from 2 to 9
+            byte += .bits#[.i * kcsFrameSize + .j] * mask
+            mask *= 2
+        endfor
+
+        .str$ = .str$ + unicode$(byte)
+    endfor
+
+    .return$ = .str$
 endproc

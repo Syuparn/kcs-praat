@@ -1,2 +1,4 @@
 # encoded sound
 example/*.wav
+# decoded text
+example/*_decoded.txt
