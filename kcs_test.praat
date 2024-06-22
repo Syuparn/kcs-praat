@@ -63,6 +63,8 @@ endproc
 procedure testFramesToString()
     appendInfoLine("testFramesToString")
     @_testFramesToString({0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1}, "a")
+    @_testFramesToString({0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1}, "0")
+    @_testFramesToString({0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1}, newline$)
     @_testFramesToString({0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1}, "ab")
     # trailing frame is insufficient
     @_testFramesToString({0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1}, "a")

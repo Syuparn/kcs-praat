@@ -54,7 +54,7 @@ procedure decodeKCSFromFile(.soundFileName$, .txtFileName$)
 
     # HACK: use dummy separator that never be used
     #                                   title(dummy)      text    separator
-    do("Create Strings from tokens...", "encoded string", .text$, "\034")
+    do("Create Strings from tokens...", "encoded string", .text$, unicode$(28))
     do("Save as raw text file...", .txtFileName$)
 endproc
 
